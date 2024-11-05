@@ -42,13 +42,13 @@ jobs:
           touch ./application.yml
           echo '${{ secrets.APPLICATION_PROD }}' > ./application.yml
           
-          touch ./application.yml
+          touch ./gateway-config.yml
           echo '${{ secrets.GATEWAY_CONFIG }}' > ./gateway-config.yml
           
-          touch ./application.yml
+          touch ./routes-config.yml
           echo '${{ secrets.ROUTES_CONFIG }}' > ./routes-config.yml
           
-          touch ./application.yml
+          touch ./swagger-config.yml
           echo '${{ secrets.SWAGGER_CONFIG }}' > ./swagger-config.yml
         shell: bash
 
@@ -58,25 +58,23 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build
 
-  deploy:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/release'
-
-    steps:
       - name: docker login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        if: github.ref == 'refs/heads/release'
 
       - name: Docker build & push to production
         run: |
           docker build -f Dockerfile -t ${{ secrets.DOCKERHUB_USERNAME }}/gateway-service .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/gateway-service
+        if: github.ref == 'refs/heads/release'
 
       - name: Get GitHub IP
         id: ip
         uses: haythem/public-ip@v1.3
+        if: github.ref == 'refs/heads/release'
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -84,10 +82,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+        if: github.ref == 'refs/heads/release'
 
       - name: Add GitHub IP to AWS Security Group
         run: |
           aws ec2 authorize-security-group-ingress --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} --protocol tcp --port ${{ secrets.EC2_SSH_PORT }} --cidr ${{ steps.ip.outputs.ipv4 }}/32
+        if: github.ref == 'refs/heads/release'
 
       - name: Deploy to EC2 using PEM Key
         uses: appleboy/ssh-action@v0.1.6
@@ -100,13 +100,18 @@ jobs:
             echo "Stopping existing application..."
             sudo docker stop gateway-service || true
             sudo docker rm gateway-service || true
+
             echo "Pulling latest image..."
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/gateway-service:latest
+
             echo "Running new container..."
             sudo docker run -d --name gateway-service -p ${{ secrets.APPLICATION_PORT }}:${{ secrets.APPLICATION_PORT }} ${{ secrets.DOCKERHUB_USERNAME }}/gateway-service:latest
+
             echo "Cleaning up unused Docker images..."
             sudo docker image prune -f
+        if: github.ref == 'refs/heads/release'
 
       - name: Remove GitHub IP from AWS Security Group
         run: |
           aws ec2 revoke-security-group-ingress --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} --protocol tcp --port ${{ secrets.EC2_SSH_PORT }} --cidr ${{ steps.ip.outputs.ipv4 }}/32
+        if: github.ref == 'refs/heads/release'

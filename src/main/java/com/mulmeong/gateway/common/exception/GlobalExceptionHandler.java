@@ -3,6 +3,7 @@ package com.mulmeong.gateway.common.exception;
 import com.mulmeong.gateway.common.response.BaseResponse;
 import com.mulmeong.gateway.common.response.BaseResponseStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,17 +24,14 @@ public class GlobalExceptionHandler {
     protected BaseResponse<Void> handleBaseException(BaseException e) {
 
         // 예외 메시지를 로그에 기록
-        log.error("BaseException 발생 : {}", e.getMessage()); //null
         log.error("BaseException 발생 : {}", e.getStatus());
-        log.error("BaseException 발생 : {}", e.getStatus().getMessage());
-        log.error(e.toString());
 
         // 예외 스택을 로그에 기록
         for (StackTraceElement s : e.getStackTrace()) {
             System.out.println(s);
         }
 
-        return new BaseResponse<>(e.getStatus(), e);
+        return new BaseResponse<>(e.getStatus());
     }
 
     /**
@@ -43,7 +41,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     protected BaseResponse<Void> handleRuntimeException(RuntimeException e) {
 
-        log.error("RuntimeException: ", e.getMessage());
+        log.error("런타임 예외: ", e.getMessage());
 
         return new BaseResponse<>(BaseResponseStatus.INTERNAL_SERVER_ERROR, e);
     }

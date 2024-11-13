@@ -31,21 +31,20 @@ public record BaseResponse<T>(HttpStatusCode httpStatus, Boolean isSuccess, Stri
      * @param status 요청 상태
      */
     public BaseResponse(BaseResponseStatus status) {
-        this(status.getHttpStatusCode(), false, status.getMessage(), status.getCode(), null);
+        this(status.getHttpStatusCode(), false, status.getMessage(), status.getCode(), (T) status.getMessage());
     }
 
     /**
      * 4. 요청에 실패한 경우 + 에러 객체(메시지) 추가.
      *
      * @param status 요청 상태
-     * @param e      에러 객체 => e.ggetMessage()로 에러 메시지 전달
+     * @param e      에러 객체 => e.getMessage()로 에러 메시지 전달
      */
-    public BaseResponse(BaseResponseStatus status, RuntimeException e) {
+    public BaseResponse(BaseResponseStatus status, Exception e) {
         this(status.getHttpStatusCode(),
                 false,
-                String.format("%s: %s", status.getMessage(), e.getMessage()),
+                e.getMessage(),
                 status.getCode(),
-                null);
+                (T) status.getMessage());
     }
-
 }
